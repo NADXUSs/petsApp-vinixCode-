@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "backend"
+		},
+		{
+			"path": "app - reactNative\\petsApp"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "backend",
+		"liveServer.settings.port": 5501
+	}
+}
