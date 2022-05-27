@@ -17,12 +17,23 @@ export default function Home({ navigation }) {
     const [showModalPets, setshowModalPets] = useState({ display: 'none', opacity: 0 });
     const [showModalDeletePets, setshowModalDeletePets] = useState({ display: 'none', opacity: 0 });
     const [showModalUpdatePets, setshowModalUpdatePets] = useState({ display: 'none', opacity: 0 });
+    const [showModalDetails, setshowModalDetails] = useState({ display: 'none', opacity: 0 });
 
     const [petName, setpetName] = useState('');
     const [available, setAvailable] = useState(false);
     const [Noavailable, setNoavailable] = useState(false);
     const [category, setCategory] = useState('');
     const [tagsValue, settagsValue] = useState([]);
+
+    const [petIDfilter, setpetIDfilter] = useState(null);
+    const [petDetails, setpetDetails] = useState({
+        photoName: "",
+        name: "",
+        status: "",
+        tags: ''
+    });
+
+
 
     const [statusImage, setStatusImage] = useState({ name: 'Subir imagen de mascota', color: '#0984e314', textColor: '#0984e3' });
 
@@ -48,7 +59,6 @@ export default function Home({ navigation }) {
     async function sendFile() {
         try {
             const data = new FormData();
-            console.log(resImage);
             data.append('petImage', {
                 uri: resImage[0].uri,
                 type: resImage[0].type,
@@ -156,6 +166,7 @@ export default function Home({ navigation }) {
     function showAddPets(show) {
         if (show == true) {
             setshowModalPets({ display: 'flex', opacity: 1 })
+            setpetName('')
         } else {
             setshowModalPets({ display: 'none', opacity: 0 })
         }
@@ -186,20 +197,73 @@ export default function Home({ navigation }) {
         }
     }
 
-    function showEditPets(show, id) {
+    function showEditPets(show, id, petName) {
         if (show == true) {
             setshowModalUpdatePets({ display: 'flex', opacity: 1 })
         } else {
             setshowModalUpdatePets({ display: 'none', opacity: 0 })
         }
 
-        if (id) {
+        if (id && petName) {
             updatePetsId = id
+            setpetName(petName)
         }
     }
 
+    /*  filtrar mascotas por status */
     function filterStatus(statusName) {
-        /* esto es lo que falta por desarrollar */
+        if (statusName == 'Todos') {
+            getPets()
+        } else if (statusName) {
+            FetchFunctionGet(`/pet/findByStatus/${statusName}`).then(statusPet => {
+                setPets(statusPet.response)
+            })
+        }
+    }
+
+    /* filtrar mascotas por id */
+    function filterPetId() {
+        if (petIDfilter) {
+            FetchFunctionGet(`/pet/${petIDfilter}`).then(petData => {
+                if (petData.response[0]) {
+                    setPets(petData.response)
+                } else {
+                    genericAlerts('Algo salio mal', 'No hay mascotas con este ID', 'Home', navigation)
+                    getPets()
+                }
+
+                setpetIDfilter('')
+            })
+        }
+
+    }
+
+    function showMoreDetails(show, petDetails) {
+        if (show == true) {
+            setshowModalDetails({ display: 'flex', opacity: 1 })
+        } else {
+            setshowModalDetails({ display: 'none', opacity: 0 })
+        }
+
+        if (petDetails) {
+            FetchFunctionGet(`/pet/${petDetails}`).then(async petData => {
+                if (petData.response[0]) {
+
+                    let tagsPetText = ''
+
+                    await JSON.parse(petData.response[0].tags).forEach(tagsData => {
+                        tagsPetText += `${tagsData.name}, `
+                    })
+                    setpetDetails({
+                        photoName: petData.response[0].photoUrls,
+                        name: petData.response[0].name,
+                        status: petData.response[0].status,
+                        tags: tagsPetText
+                    })
+                }
+
+            })
+        }
     }
 
     useEffect(() => {
@@ -210,48 +274,79 @@ export default function Home({ navigation }) {
     //los estilos y componentes no estan separados para disminuir el tiempo de desarrollo
     return (
         <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center', backgroundColor: "white", minHeight: 700, width: "100%" }}>
+
+            {/* filtrar mascotas por estado ================================ */}
             <View>
                 <Text style={{ backgroundColor: '#0984e314', color: '#0984e3', width: 300, marginTop: 20, padding: 10, borderRadius: 5 }}>Filtrar mascotas por status</Text>
                 <RNPickerSelect
                     onValueChange={(value) => { filterStatus(value) }}
                     placeholder={{ label: "Seleccionar status", value: 0 }}
                     items={[
-                        { label: 'Ninguno', value: 'Ninguno' },
+                        { label: 'Todos', value: 'Todos' },
                         { label: 'No disponible', value: 'No disponible' },
                         { label: 'Disponible', value: 'Disponible' },
                     ]}
-                    value={category}
                 />
             </View>
+            {/* ============================================================ */}
+
+            {/* filtrar mascotas por estado ================================ */}
+            <View>
+                <Text style={{ backgroundColor: '#0984e314', color: '#0984e3', width: 300, marginTop: 20, padding: 10, borderRadius: 5 }}>Filtrar mascotas por ID</Text>
+                <View>
+                    <TextInput
+                        style={{ marginVertical: 8, borderColor: "#0984e3", borderWidth: 1, borderRadius: 10, height: 40, width: "100%", padding: 0, paddingHorizontal: 10 }}
+                        placeholder="Ingrese el ID de la mascota"
+                        onChangeText={(text) => { setpetIDfilter(text) }}
+                        value={petIDfilter}
+                    />
+                    <TouchableHighlight
+                        keyboardType="numeric"
+                        value={""}
+                        underlayColor="#46aeff"
+                        style={{ width: "100%", backgroundColor: "#0984e3", padding: 10, borderRadius: 10, marginTop: 0 }}
+                        onPress={() => { filterPetId() }}>
+                        <Text style={{ textAlign: "center", color: "white" }}>Buscar por ID</Text>
+                    </TouchableHighlight>
+                </View>
+            </View>
+            {/* ============================================================ */}
+
+
             {/* lista de mascotas agregadas ================================ */}
-            <Text style={{ marginTop: 50, width: "85%", fontSize: 15, marginBottom: 20 }}>Mascotas</Text>
+            <Text style={{ marginTop: 30, width: "85%", fontSize: 15, marginBottom: 20 }}>Mascotas</Text>
             <FlatList
-                style={{ width: "90%" }}
+                style={{ width: "90%", }}
                 data={pets}
                 renderItem={({ item }) => (
-                    <View style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 3, }, shadowOpacity: 0.29, shadowRadius: 4.65, elevation: 7, borderRadius: 10, marginHorizontal: 10, marginVertical: 10, display: 'flex', flexDirection: 'row', alignItems: "center", backgroundColor: "white" }}>
-                        <View>
-                            <Image
-                                style={{ width: 95, height: 95, marginTop: 0, marginRight: 10 }}
-                                source={{
-                                    uri: 'http://10.0.2.2:3000/imagePets/' + item.photoUrls,
-                                }}
-                            />
+                    <>
+                        <View style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, shadowColor: "#000", shadowOffset: { width: 0, height: 3, }, shadowOpacity: 0.29, shadowRadius: 4.65, elevation: 7, borderRadius: 10, marginHorizontal: 10, marginVertical: 0, display: 'flex', flexDirection: 'row', alignItems: "center", backgroundColor: "white" }}>
+                            <View>
+                                <Image
+                                    style={{ width: 95, height: 95, marginTop: 0, marginRight: 10 }}
+                                    source={{
+                                        uri: 'http://10.0.2.2:3000/imagePets/' + item.photoUrls,
+                                    }}
+                                />
+                            </View>
+                            <View style={{ marginTop: 0, flex: 0.9 }}>
+                                <Text style={{ color: "#0984e3", fontSize: 15 }}>{item.name}</Text>
+                                <Text style={{ backgroundColor: '#0984e314', color: "#0984e3", textAlign: "center", width: 100, padding: 4, borderRadius: 5, marginTop: 10 }}>{item.status}</Text>
+                                {/* <Text>{item.tags}</Text> */}
+                            </View>
+                            <View>
+                                <TouchableHighlight underlayColor="#46aeff" onPress={() => { showEditPets(true, item.id, item.name) }} >
+                                    <Text style={{ borderRadius: 5, backgroundColor: "#0984e3", color: "white", padding: 5, marginVertical: 3, width: 70, textAlign: "center" }}>Editar</Text>
+                                </TouchableHighlight>
+                                <TouchableHighlight underlayColor="#46aeff" onPress={() => { showDeletePets(true, item.id) }} >
+                                    <Text style={{ borderRadius: 5, backgroundColor: "#ff00002e", color: "#ff0000", padding: 5, marginVertical: 3, width: 70, textAlign: "center" }}>Eliminar</Text>
+                                </TouchableHighlight>
+                            </View>
                         </View>
-                        <View style={{ marginTop: 0, flex: 0.9 }}>
-                            <Text style={{ color: "#0984e3", fontSize: 15 }}>{item.name}</Text>
-                            <Text style={{ backgroundColor: '#0984e314', color: "#0984e3", textAlign: "center", width: 100, padding: 4, borderRadius: 5, marginTop: 10 }}>{item.status}</Text>
-                            {/* <Text>{item.tags}</Text> */}
-                        </View>
-                        <View>
-                            <TouchableHighlight underlayColor="#46aeff" onPress={() => { showEditPets(true, item.id) }} >
-                                <Text style={{ borderRadius: 5, backgroundColor: "#0984e3", color: "white", padding: 5, marginVertical: 3, width: 70, textAlign: "center" }}>Editar</Text>
-                            </TouchableHighlight>
-                            <TouchableHighlight underlayColor="#46aeff" onPress={() => { showDeletePets(true, item.id) }} >
-                                <Text style={{ borderRadius: 5, backgroundColor: "#ff00002e", color: "#ff0000", padding: 5, marginVertical: 3, width: 70, textAlign: "center" }}>Eliminar</Text>
-                            </TouchableHighlight>
-                        </View>
-                    </View>
+                        <TouchableHighlight style={{ width: "100%", alignItems: "center", marginBottom: 20 }} underlayColor="#46aeff" onPress={() => { showMoreDetails(true, item.id) }} >
+                            <Text style={{ borderRadius: 5, backgroundColor: "#e5f4ff", color: "#0984e3", padding: 5, width: "94.5%", textAlign: "center", borderTopLeftRadius: 0, borderTopRightRadius: 0, shadowColor: "#000", shadowOffset: { width: 0, height: 3, }, shadowOpacity: 0.29, shadowRadius: 4.65, elevation: 7, }}>Ver mas detalles de la mascota</Text>
+                        </TouchableHighlight>
+                    </>
                 )}
             />
             {/* =========================================================== */}
@@ -262,6 +357,9 @@ export default function Home({ navigation }) {
             </TouchableHighlight>
             {/* =========================================================== */}
 
+
+
+            {/* modals ******* */}
 
             {/* modal para agregar mascotas con su respectiva imagen ====== */}
             <View style={{ opacity: showModalPets.opacity, display: showModalPets.display, top: "0%", left: "0%", backgroundColor: "#0000004f", width: "100%", height: "100%", alignItems: 'center', justifyContent: 'center', position: 'absolute' }}>
@@ -428,6 +526,30 @@ export default function Home({ navigation }) {
                 </View>
             </View>
             {/* =========================================================== */}
+
+
+            {/* modal para ver todos los detalles de la mascota ==================== */}
+            <View style={{ opacity: showModalDetails.opacity, display: showModalDetails.display, top: "0%", left: "0%", backgroundColor: "#0000004f", width: "100%", height: "100%", alignItems: 'center', justifyContent: 'center', position: 'absolute' }}>
+                <View style={{ padding: 20, backgroundColor: "white", width: 300, height: 450, borderRadius: 10, alignItems: 'center', justifyContent: "center" }}>
+                    <Image
+                        style={{ width: 140, height: 140, marginTop: 30, borderRadius: 20, marginBottom: 20 }}
+                        source={{
+                            uri: `http://10.0.2.2:3000/imagePets/${petDetails.photoName}`,
+                        }}
+                    />
+                    <Text style={{ fontSize: 20, marginBottom: 10 }}>{petDetails.name}</Text>
+                    <Text style={{ backgroundColor: '#0984e314', color: "#0984e3", textAlign: "center", width: 100, padding: 4, borderRadius: 5, marginBottom: 20 }}>{petDetails.status}</Text>
+                    <Text>tags</Text>
+                    <Text style={{ marginTop: 10 }}>{petDetails.tags}</Text>
+                    <TouchableHighlight style={{ width: "100%", alignItems: "center", marginBottom: 10, marginTop: 40 }} underlayColor="#46aeff" onPress={() => { showMoreDetails(false) }} >
+                        <Text style={{ borderRadius: 5, backgroundColor: "#0984e3", color: "white", padding: 10, width: "94.5%", textAlign: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3, }, shadowOpacity: 0.29, shadowRadius: 4.65, elevation: 7, }}>Cerrar</Text>
+                    </TouchableHighlight>
+                </View>
+
+                
+            </View>
+            {/* =========================================================== */}
+
         </View>
     );
 }

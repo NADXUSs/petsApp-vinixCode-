@@ -95,7 +95,7 @@ class pets {
         database.showData('pets', 'status', status).then(data => {
             res.json({
                 ok: true,
-                response: data
+                response: data.response
             })
         })
     }
@@ -103,7 +103,7 @@ class pets {
         database.showData('pets', 'id', id).then(data => {
             res.json({
                 ok: true,
-                response: data
+                response: data.response
             })
         })
     }
